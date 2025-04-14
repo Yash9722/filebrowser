@@ -3,14 +3,16 @@ FROM golang:1.21-alpine as builder
 
 WORKDIR /app
 
-# Install dependencies
 RUN apk add --no-cache git
 
-# Copy source code
+# Copy the whole source
 COPY . .
 
-# Build filebrowser binary
-RUN go build -o filebrowser .
+# Move to the directory where go.mod and main.go exist
+WORKDIR /app/cmd/filebrowser
+
+# Build the binary
+RUN go build -o /filebrowser
 
 # Stage 2: Runtime image
 FROM alpine:latest
@@ -20,7 +22,8 @@ RUN apk --update add ca-certificates \
                      curl \
                      jq
 
-COPY --from=builder /app/filebrowser /filebrowser
+# Copy the built binary from builder
+COPY --from=builder /filebrowser /filebrowser
 COPY docker_config.json /.filebrowser.json
 COPY healthcheck.sh /healthcheck.sh
 
