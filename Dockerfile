@@ -1,36 +1,35 @@
-# Stage 1: Build
-FROM golang:1.21-alpine AS builder
+# Stage 1: Build the binary
+FROM golang:1.19-alpine as builder
 
-WORKDIR /app
+WORKDIR /go/src/app
 
-# Install git (required by Go if modules pull from GitHub)
-RUN apk add --no-cache git
+# Copy the go.mod and go.sum files
+COPY cmd/go.mod cmd/go.sum ./
 
-# Copy all source code into the image
-COPY . .
+# Download dependencies
+RUN go mod tidy
 
-# Build the filebrowser binary from root (where go.mod is)
-RUN go build -o /filebrowser
+# Copy the rest of the application code
+COPY cmd/ ./cmd/
 
-# Stage 2: Runtime
+# Build the binary
+RUN go build -o /filebrowser ./cmd
+
+# Stage 2: Runtime image
 FROM alpine:latest
 
-# Install runtime dependencies
-RUN apk --no-cache add ca-certificates mailcap curl jq
-
-# Copy the built binary and config files from builder stage
+# Copy the built binary from the build stage
 COPY --from=builder /filebrowser /filebrowser
-COPY docker_config.json /.filebrowser.json
+
+# Copy other necessary files like healthcheck script, etc.
 COPY healthcheck.sh /healthcheck.sh
+RUN chmod +x /healthcheck.sh  # Make the script executable
 
-# Make healthcheck and binary executable
-RUN chmod +x /filebrowser /healthcheck.sh
-
-# Setup healthcheck
 HEALTHCHECK --start-period=2s --interval=5s --timeout=3s \
     CMD /healthcheck.sh || exit 1
 
 VOLUME /srv
 EXPOSE 80
 
-ENTRYPOINT ["/filebrowser"]
+COPY docker_config.json /.filebrowser.json
+ENTRYPOINT [ "/filebrowser" ]
