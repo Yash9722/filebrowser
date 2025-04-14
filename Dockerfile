@@ -3,13 +3,13 @@ FROM golang:1.19-alpine as builder
 
 WORKDIR /go/src/app
 
-# Copy the go.mod and go.sum files
+# Copy the go.mod and go.sum files from the cmd directory
 COPY cmd/go.mod cmd/go.sum ./
 
 # Download dependencies
 RUN go mod tidy
 
-# Copy the rest of the application code
+# Copy the rest of the application code from the cmd directory
 COPY cmd/ ./cmd/
 
 # Build the binary
